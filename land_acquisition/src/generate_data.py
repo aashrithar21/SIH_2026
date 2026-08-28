@@ -1,321 +1,743 @@
-
 import os
 import numpy as np
 import pandas as pd
 
-SEED = 26017
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
 N = 12000
+SEED = 26017
+
 rng = np.random.default_rng(SEED)
 
-# Government-grounded milestone thresholds from DoLR/LACRRIS:
-# SIA submission: >8 months is a delay benchmark
-# SIA -> preliminary notification: >12 months
-# Land-record update after preliminary notification: >60 days
-# Objection disposal: >2 months
-# Acquisition-cost deposit: >6 months
-# Preliminary notification -> declaration: >12 months
-# Award: >30 months overall
-# R&R implementation after possession: >18 months
-# Source: DoLR LACRRIS "Steps for entering data" PDF.
 
-locations = {
+# ============================================================
+# GOVERNMENT-GROUNDED REFERENCE DATA
+# ============================================================
+#
+# These names are based on publicly available Indian
+# government land-acquisition / infrastructure contexts.
+#
+# The generated records are SYNTHETIC, not government records.
+#
+
+STATES = {
     "Andhra Pradesh": [
-        ("Anantapur", 14.68, 77.60), ("Guntur", 16.31, 80.44),
-        ("Krishna", 16.61, 80.72), ("Kurnool", 15.83, 78.04),
-        ("Visakhapatnam", 17.69, 83.22)
+        ("Visakhapatnam", 17.6868, 83.2185),
+        ("Vijayawada", 16.5062, 80.6480),
+        ("Guntur", 16.3067, 80.4365),
+        ("Kurnool", 15.8281, 78.0373)
     ],
-    "Assam": [
-        ("Kamrup", 26.14, 91.74), ("Dibrugarh", 27.47, 94.91),
-        ("Jorhat", 26.75, 94.20), ("Sonitpur", 26.63, 92.80)
-    ],
-    "Bihar": [
-        ("Patna", 25.59, 85.14), ("Gaya", 24.79, 85.00),
-        ("Muzaffarpur", 26.12, 85.39), ("Bhagalpur", 25.24, 86.98)
-    ],
-    "Chhattisgarh": [
-        ("Raipur", 21.25, 81.63), ("Bilaspur", 22.08, 82.15),
-        ("Durg", 21.19, 81.28), ("Korba", 22.36, 82.68)
-    ],
-    "Gujarat": [
-        ("Ahmedabad", 23.02, 72.57), ("Vadodara", 22.31, 73.18),
-        ("Surat", 21.17, 72.83), ("Rajkot", 22.30, 70.80),
-        ("Kutch", 23.73, 69.86)
-    ],
-    "Haryana": [
-        ("Gurugram", 28.46, 77.03), ("Hisar", 29.15, 75.72),
-        ("Karnal", 29.69, 76.99), ("Rewari", 28.20, 76.62)
-    ],
-    "Jharkhand": [
-        ("Ranchi", 23.34, 85.31), ("Dhanbad", 23.80, 86.43),
-        ("Jamshedpur", 22.80, 86.20), ("Bokaro", 23.67, 86.15)
-    ],
-    "Karnataka": [
-        ("Bengaluru Urban", 12.97, 77.59), ("Mysuru", 12.30, 76.65),
-        ("Dharwad", 15.46, 75.01), ("Belagavi", 15.85, 74.50),
-        ("Kalaburagi", 17.33, 76.83)
-    ],
-    "Kerala": [
-        ("Thiruvananthapuram", 8.52, 76.94), ("Ernakulam", 9.98, 76.28),
-        ("Kozhikode", 11.25, 75.78), ("Palakkad", 10.79, 76.65)
-    ],
-    "Madhya Pradesh": [
-        ("Bhopal", 23.26, 77.41), ("Indore", 22.72, 75.86),
-        ("Jabalpur", 23.18, 79.95), ("Gwalior", 26.22, 78.18),
-        ("Rewa", 24.54, 81.30)
-    ],
-    "Maharashtra": [
-        ("Mumbai Suburban", 19.08, 72.88), ("Pune", 18.52, 73.86),
-        ("Nashik", 19.99, 73.79), ("Nagpur", 21.15, 79.09),
-        ("Aurangabad", 19.88, 75.34), ("Solapur", 17.66, 75.91)
-    ],
-    "Odisha": [
-        ("Khordha", 20.18, 85.62), ("Cuttack", 20.46, 85.88),
-        ("Sundargarh", 22.12, 84.03), ("Ganjam", 19.38, 85.10)
-    ],
-    "Punjab": [
-        ("Ludhiana", 30.90, 75.86), ("Amritsar", 31.63, 74.87),
-        ("Patiala", 30.34, 76.39), ("Bathinda", 30.21, 74.95)
-    ],
-    "Rajasthan": [
-        ("Jaipur", 26.91, 75.79), ("Alwar", 27.55, 76.63),
-        ("Dausa", 26.89, 76.33), ("Sawai Madhopur", 26.02, 76.34),
-        ("Jodhpur", 26.24, 73.02), ("Kota", 25.21, 75.86)
-    ],
-    "Tamil Nadu": [
-        ("Chennai", 13.08, 80.27), ("Coimbatore", 11.02, 76.96),
-        ("Madurai", 9.93, 78.12), ("Salem", 11.66, 78.15),
-        ("Tiruchirappalli", 10.79, 78.70)
-    ],
+
     "Telangana": [
-        ("Hyderabad", 17.39, 78.49), ("Warangal", 17.98, 79.59),
-        ("Nizamabad", 18.67, 78.09), ("Khammam", 17.25, 80.15)
+        ("Hyderabad", 17.3850, 78.4867),
+        ("Warangal", 17.9689, 79.5941),
+        ("Nalgonda", 17.0575, 79.2684),
+        ("Karimnagar", 18.4386, 79.1288)
     ],
+
+    "Karnataka": [
+        ("Bengaluru Urban", 12.9716, 77.5946),
+        ("Mysuru", 12.2958, 76.6394),
+        ("Belagavi", 15.8497, 74.4977),
+        ("Dharwad", 15.4589, 75.0078)
+    ],
+
+    "Tamil Nadu": [
+        ("Chennai", 13.0827, 80.2707),
+        ("Coimbatore", 11.0168, 76.9558),
+        ("Madurai", 9.9252, 78.1198),
+        ("Salem", 11.6643, 78.1460)
+    ],
+
+    "Maharashtra": [
+        ("Mumbai", 19.0760, 72.8777),
+        ("Pune", 18.5204, 73.8567),
+        ("Nashik", 19.9975, 73.7898),
+        ("Nagpur", 21.1458, 79.0882)
+    ],
+
+    "Gujarat": [
+        ("Ahmedabad", 23.0225, 72.5714),
+        ("Surat", 21.1702, 72.8311),
+        ("Vadodara", 22.3072, 73.1812),
+        ("Rajkot", 22.3039, 70.8022)
+    ],
+
+    "Rajasthan": [
+        ("Jaipur", 26.9124, 75.7873),
+        ("Jodhpur", 26.2389, 73.0243),
+        ("Kota", 25.2138, 75.8648),
+        ("Sawai Madhopur", 25.9940, 76.3669)
+    ],
+
     "Uttar Pradesh": [
-        ("Lucknow", 26.85, 80.95), ("Kanpur Nagar", 26.45, 80.35),
-        ("Agra", 27.18, 78.01), ("Varanasi", 25.32, 82.97),
-        ("Gautam Buddha Nagar", 28.45, 77.52), ("Prayagraj", 25.44, 81.84)
+        ("Lucknow", 26.8467, 80.9462),
+        ("Kanpur Nagar", 26.4499, 80.3319),
+        ("Agra", 27.1767, 78.0081),
+        ("Varanasi", 25.3176, 82.9739)
     ],
-    "Uttarakhand": [
-        ("Dehradun", 30.32, 78.03), ("Haridwar", 29.95, 78.16),
-        ("Udham Singh Nagar", 29.00, 79.45)
+
+    "Madhya Pradesh": [
+        ("Bhopal", 23.2599, 77.4126),
+        ("Indore", 22.7196, 75.8577),
+        ("Gwalior", 26.2183, 78.1828),
+        ("Jabalpur", 23.1815, 79.9864)
     ],
-    "West Bengal": [
-        ("Kolkata", 22.57, 88.36), ("Howrah", 22.60, 88.26),
-        ("North 24 Parganas", 22.62, 88.45), ("Paschim Bardhaman", 23.68, 87.00)
+
+    "Punjab": [
+        ("Ludhiana", 30.9010, 75.8573),
+        ("Amritsar", 31.6340, 74.8723),
+        ("Patiala", 30.3398, 76.3869),
+        ("Bathinda", 30.2110, 74.9455)
     ]
 }
 
-project_types = [
-    "National Highway", "State Highway", "Railway", "Irrigation",
-    "Industrial Corridor", "Power Transmission", "Urban Infrastructure",
-    "Airport", "Metro/Rapid Transit"
+
+PROJECT_TYPES = [
+    "Highway",
+    "Railway",
+    "Metro",
+    "Airport",
+    "Industrial Corridor",
+    "Irrigation",
+    "Power",
+    "Urban Development"
 ]
 
-stages = [
-    "SIA", "Preliminary Notification", "Land Record Update",
-    "Objection Disposal", "Award", "Compensation", "Possession",
-    "Rehabilitation & Resettlement"
-]
 
-# Sample a state with a mild population/administrative-size weighting.
-states = list(locations.keys())
-state_weights = np.array([
-    0.05,0.025,0.055,0.025,0.05,0.03,0.025,0.055,0.03,0.05,
-    0.08,0.04,0.035,0.035,0.055,0.04,0.08,0.025,0.06
-])
-state_weights = state_weights / state_weights.sum()
+# ============================================================
+# HELPER FUNCTIONS
+# ============================================================
+
+def clip(value, low, high):
+    return float(np.clip(value, low, high))
+
+
+def sigmoid(x):
+    return 1.0 / (1.0 + np.exp(-np.clip(x, -30, 30)))
+
+
+# ============================================================
+# GENERATE PROJECTS
+# ============================================================
 
 rows = []
+
 for i in range(N):
-    state = rng.choice(states, p=state_weights)
-    district, lat, lon = locations[state][rng.integers(len(locations[state]))]
-    ptype = rng.choice(project_types)
 
-    # Project size and affected families are correlated.
-    land_area = float(np.clip(rng.lognormal(mean=4.7, sigma=1.0), 5, 2500))
-    families = int(np.clip(
-        land_area * rng.lognormal(mean=-0.15, sigma=0.65) + rng.normal(5, 15),
-        5, 2500
-    ))
+    # --------------------------------------------------------
+    # LOCATION
+    # --------------------------------------------------------
 
-    # Difficulty drivers. These are intentionally correlated rather than independent.
-    complexity = (
-        0.25 * np.log1p(land_area) +
-        0.20 * np.log1p(families) +
-        0.20 * (ptype in ["National Highway", "Railway", "Metro/Rapid Transit"]) +
-        0.15 * (state in ["Maharashtra", "Uttar Pradesh", "West Bengal", "Bihar"]) +
-        rng.normal(0, 0.35)
+    state = rng.choice(list(STATES.keys()))
+
+    location_index = rng.integers(0, len(STATES[state]))
+
+    district, base_lat, base_lon = STATES[state][location_index]
+
+    project_type = rng.choice(
+        PROJECT_TYPES
     )
 
-    legal_disputes = int(np.clip(
-        rng.poisson(max(0.4, 1.5 + 2.0 * complexity)), 0, 80
-    ))
+    # --------------------------------------------------------
+    # PROJECT SCALE
+    # --------------------------------------------------------
 
-    pending_approvals = int(np.clip(
-        rng.poisson(max(0.3, 0.8 + 1.4 * complexity)), 0, 15
-    ))
+    land_area = rng.lognormal(
+        mean=np.log(80),
+        sigma=0.9
+    )
 
-    approval_delay_days = int(np.clip(
-        rng.gamma(shape=2.2, scale=18) + pending_approvals * rng.uniform(8, 25),
-        0, 500
-    ))
+    land_area = clip(
+        land_area,
+        5,
+        1200
+    )
 
-    # Official LACRRIS-style milestone durations.
-    sia_to_prelim_months = float(np.clip(
-        rng.gamma(2.0, 2.6) + complexity * 1.8, 0.5, 24
-    ))
-    land_record_days = int(np.clip(
-        rng.gamma(2.0, 16) + complexity * 12, 5, 150
-    ))
-    objection_days = int(np.clip(
-        rng.gamma(2.0, 25) + legal_disputes * rng.uniform(1, 5), 5, 300
-    ))
-    deposit_months = float(np.clip(
-        rng.gamma(2.0, 1.7) + pending_approvals * rng.uniform(0.15, 0.8),
-        0.2, 12
-    ))
-    prelim_to_declaration_months = float(np.clip(
-        rng.gamma(2.0, 4.0) + legal_disputes * rng.uniform(0.02, 0.15),
-        1, 30
-    ))
-    award_months = float(np.clip(
-        rng.gamma(2.3, 8.5) + legal_disputes * rng.uniform(0.15, 0.6),
-        6, 48
-    ))
+    families = int(
+        np.clip(
+            land_area * rng.uniform(0.5, 1.8)
+            + rng.normal(0, 25),
+            5,
+            1800
+        )
+    )
 
-    # Progress variables are linked to milestone performance.
-    compensation = float(np.clip(
-        100 - 2.0 * legal_disputes - 3.0 * pending_approvals
-        - 0.25 * approval_delay_days + rng.normal(0, 10),
-        5, 100
-    ))
-    documentation = float(np.clip(
-        100 - 0.55 * land_record_days - 0.20 * objection_days
-        + rng.normal(0, 10),
-        20, 100
-    ))
-    rehabilitation = float(np.clip(
-        compensation * 0.65 - legal_disputes * 0.8
-        + rng.normal(0, 12),
-        5, 100
-    ))
-    possession = float(np.clip(
-        compensation * 0.55 + documentation * 0.20
-        - legal_disputes * 0.9 - pending_approvals * 2.0
-        + rng.normal(0, 10),
-        5, 100
-    ))
-    stakeholder_response = float(np.clip(
-        85 - legal_disputes * 1.4 - pending_approvals * 2.2
-        + rng.normal(0, 12),
-        10, 100
-    ))
-    historical_performance = float(np.clip(
-        82 - complexity * 10 + rng.normal(0, 10), 20, 98
-    ))
+    # --------------------------------------------------------
+    # LEGAL / ADMINISTRATIVE VARIABLES
+    # --------------------------------------------------------
 
-    rr_months = float(np.clip(
-        rng.gamma(2.0, 5.0) + max(0, 70 - rehabilitation) / 10,
-        1, 30
-    ))
+    legal_disputes = int(
+        np.clip(
+            rng.poisson(
+                1.5 + families / 300
+            ),
+            0,
+            30
+        )
+    )
 
-    # Official benchmark breaches, based on DoLR/LACRRIS published ranking criteria.
-    b_sia = sia_to_prelim_months > 12
-    b_land = land_record_days > 60
-    b_objection = objection_days > 60
-    b_deposit = deposit_months > 6
-    b_declaration = prelim_to_declaration_months > 12
-    b_award = award_months > 30
-    b_rr = rr_months > 18
+    pending_approvals = int(
+        np.clip(
+            rng.poisson(
+                1.0 + legal_disputes / 10
+            ),
+            0,
+            12
+        )
+    )
+
+    approval_delay_days = int(
+        np.clip(
+            rng.gamma(
+                shape=2.0,
+                scale=18
+            )
+            + pending_approvals * rng.uniform(10, 25)
+            + legal_disputes * rng.uniform(1, 5),
+            0,
+            600
+        )
+    )
+
+    # --------------------------------------------------------
+    # PROJECT PROGRESS
+    # --------------------------------------------------------
+
+    # A common hidden "project health" factor creates realistic
+    # correlation between different progress indicators.
+
+    project_health = rng.beta(
+        5,
+        3
+    )
+
+    compensation = clip(
+        project_health * 85
+        + rng.normal(0, 12)
+        - legal_disputes * 1.1,
+        5,
+        100
+    )
+
+    documentation = clip(
+        project_health * 90
+        + rng.normal(0, 9)
+        - legal_disputes * 0.7,
+        5,
+        100
+    )
+
+    rehabilitation = clip(
+        project_health * 82
+        + rng.normal(0, 14)
+        - families / 180,
+        5,
+        100
+    )
+
+    possession = clip(
+        project_health * 88
+        + rng.normal(0, 12)
+        - legal_disputes * 1.3,
+        5,
+        100
+    )
+
+    stakeholder_response = clip(
+        project_health * 90
+        + rng.normal(0, 10)
+        - pending_approvals * 1.5,
+        5,
+        100
+    )
+
+    historical_performance = clip(
+        project_health * 92
+        + rng.normal(0, 8),
+        5,
+        100
+    )
+
+    # --------------------------------------------------------
+    # OFFICIAL-PROCESS TIMELINES
+    # --------------------------------------------------------
+
+    sia_to_preliminary = clip(
+        rng.normal(
+            9 + legal_disputes * 0.25
+            + pending_approvals * 0.4,
+            3
+        ),
+        2,
+        24
+    )
+
+    land_record_days = int(
+        np.clip(
+            rng.normal(
+                40
+                + legal_disputes * 2
+                + (100 - documentation) * 0.4,
+                18
+            ),
+            10,
+            180
+        )
+    )
+
+    objection_days = int(
+        np.clip(
+            rng.normal(
+                40
+                + legal_disputes * 5,
+                25
+            ),
+            5,
+            240
+        )
+    )
+
+    deposit_months = clip(
+        rng.normal(
+            4.5
+            + pending_approvals * 0.45
+            + legal_disputes * 0.12,
+            2
+        ),
+        1,
+        15
+    )
+
+    prelim_to_declaration = clip(
+        rng.normal(
+            8
+            + legal_disputes * 0.35
+            + pending_approvals * 0.45,
+            3
+        ),
+        2,
+        24
+    )
+
+    award_months = clip(
+        rng.normal(
+            18
+            + legal_disputes * 0.65
+            + families / 250,
+            7
+        ),
+        5,
+        48
+    )
+
+    rr_months = clip(
+        rng.normal(
+            12
+            + families / 100
+            + legal_disputes * 0.35,
+            5
+        ),
+        4,
+        36
+    )
+
+    # --------------------------------------------------------
+    # GOVERNMENT PROCESS BENCHMARKS
+    # --------------------------------------------------------
+    #
+    # These thresholds correspond to the benchmark concepts
+    # used in the DoLR/LACRRIS process documentation.
+    #
 
     benchmark_breaches = sum([
-        b_sia, b_land, b_objection, b_deposit,
-        b_declaration, b_award, b_rr
+        sia_to_preliminary > 12,
+        land_record_days > 60,
+        objection_days > 60,
+        deposit_months > 6,
+        prelim_to_declaration > 12,
+        award_months > 30,
+        rr_months > 18
     ])
 
-    # A prototype "observed delay" outcome.
-    # This is synthetic, but grounded in the official milestone thresholds
-    # plus the additional predictive variables requested in the SIH statement.
-    excess_days = (
-        max(0, sia_to_prelim_months - 12) * 30 +
-        max(0, land_record_days - 60) +
-        max(0, objection_days - 60) +
-        max(0, deposit_months - 6) * 30 +
-        max(0, prelim_to_declaration_months - 12) * 30 +
-        max(0, award_months - 30) * 30 +
-        max(0, rr_months - 18) * 30
+    # --------------------------------------------------------
+    # LATENT RISK SCORE
+    # --------------------------------------------------------
+    #
+    # This represents the underlying relationship used to
+    # create synthetic historical outcomes.
+    #
+    # IMPORTANT:
+    # This score is NOT saved as a feature.
+    #
+
+    risk_score = (
+
+        # Process problems
+        1.60 * benchmark_breaches
+
+        # Legal / administrative problems
+        + 0.22 * legal_disputes
+        + 0.65 * pending_approvals
+        + 0.018 * approval_delay_days
+
+        # Low progress increases risk
+        + 0.025 * (100 - compensation)
+        + 0.018 * (100 - documentation)
+        + 0.022 * (100 - rehabilitation)
+        + 0.020 * (100 - possession)
+
+        # Stakeholder / historical performance
+        + 0.014 * (100 - stakeholder_response)
+        + 0.018 * (100 - historical_performance)
+
+        # Project complexity
+        + 0.30 * np.log1p(land_area)
+        + 0.15 * np.log1p(families)
+
+        # Controlled noise
+        + rng.normal(0, 1.8)
     )
 
-    operational_delay = (
-        legal_disputes * rng.uniform(1.5, 4.0) +
-        pending_approvals * rng.uniform(8, 22) +
-        max(0, 70 - compensation) * rng.uniform(0.6, 1.4) +
-        max(0, 65 - rehabilitation) * rng.uniform(0.4, 1.0) +
-        max(0, 60 - possession) * rng.uniform(0.3, 0.8) +
-        max(0, 55 - stakeholder_response) * rng.uniform(0.2, 0.6)
+    # --------------------------------------------------------
+    # CREATE DELAY PROBABILITY
+    # --------------------------------------------------------
+
+    # The offset produces a reasonable mix of delayed and
+    # non-delayed projects while retaining meaningful signal.
+
+    probability = sigmoid(
+        (risk_score - 10.5) / 2.7
     )
 
-    delay_days = int(np.clip(
-        excess_days * 0.65 + operational_delay + rng.normal(0, 35),
-        0, 1500
-    ))
+    # Small probability noise prevents the dataset from becoming
+    # a perfectly deterministic mathematical rule.
 
-    delayed = int(delay_days >= 120)
+    probability = clip(
+        probability + rng.normal(0, 0.025),
+        0.02,
+        0.98
+    )
 
-    # Current lifecycle stage is influenced by progress.
-    progress = (compensation + rehabilitation + possession) / 3
-    if progress < 25:
+    delayed = int(
+        rng.binomial(
+            1,
+            probability
+        )
+    )
+
+    # --------------------------------------------------------
+    # OBSERVED DELAY DAYS
+    # --------------------------------------------------------
+
+    delay_days = (
+
+        20
+
+        + probability * 280
+
+        + benchmark_breaches * 35
+
+        + legal_disputes * 3.5
+
+        + pending_approvals * 10
+
+        + max(0, 60 - compensation) * 1.2
+
+        + max(0, 60 - rehabilitation) * 0.8
+
+        + max(0, 60 - possession) * 0.8
+
+        + rng.normal(0, 30)
+    )
+
+    delay_days = int(
+        np.clip(
+            delay_days,
+            0,
+            1500
+        )
+    )
+
+    # Keep historical outcome broadly consistent.
+    if delayed == 1:
+        delay_days = max(
+            delay_days,
+            int(rng.uniform(120, 500))
+        )
+    else:
+        delay_days = min(
+            delay_days,
+            int(rng.uniform(0, 119))
+        )
+
+    # --------------------------------------------------------
+    # CURRENT STAGE
+    # --------------------------------------------------------
+
+    stage_value = (
+        compensation
+        + rehabilitation
+        + possession
+    ) / 3
+
+    if stage_value < 20:
         current_stage = "Preliminary Notification"
-    elif progress < 45:
+
+    elif stage_value < 40:
         current_stage = "Award"
-    elif progress < 65:
+
+    elif stage_value < 60:
         current_stage = "Compensation"
-    elif progress < 82:
+
+    elif stage_value < 78:
         current_stage = "Possession"
+
     else:
         current_stage = "Rehabilitation & Resettlement"
 
+    # --------------------------------------------------------
+    # GIS LOCATION
+    # --------------------------------------------------------
+
+    latitude = base_lat + rng.normal(
+        0,
+        0.08
+    )
+
+    longitude = base_lon + rng.normal(
+        0,
+        0.08
+    )
+
+    # --------------------------------------------------------
+    # STORE RECORD
+    # --------------------------------------------------------
+
     rows.append({
-        "project_id": f"LA{(i+1):05d}",
-        "project_type": ptype,
-        "state": state,
-        "district": district,
-        "land_area_hectares": round(land_area, 2),
-        "affected_families": families,
-        "legal_disputes": legal_disputes,
-        "pending_approvals": pending_approvals,
-        "approval_delay_days": approval_delay_days,
-        "compensation_percentage": round(compensation, 2),
-        "documentation_percentage": round(documentation, 2),
-        "rehabilitation_percentage": round(rehabilitation, 2),
-        "possession_percentage": round(possession, 2),
-        "stakeholder_response_percentage": round(stakeholder_response, 2),
-        "historical_performance_percentage": round(historical_performance, 2),
-        "sia_to_preliminary_months": round(sia_to_prelim_months, 2),
-        "land_record_update_days": land_record_days,
-        "objection_disposal_days": objection_days,
-        "acquisition_cost_deposit_months": round(deposit_months, 2),
-        "preliminary_to_declaration_months": round(prelim_to_declaration_months, 2),
-        "award_duration_months": round(award_months, 2),
-        "rr_implementation_months": round(rr_months, 2),
-        "official_benchmark_breaches": benchmark_breaches,
-        "current_stage": current_stage,
-        "latitude": round(lat + rng.normal(0, 0.03), 6),
-        "longitude": round(lon + rng.normal(0, 0.03), 6),
-        "delay_days": delay_days,
-        "delayed": delayed
+
+        "project_id":
+            f"LA{(i + 1):05d}",
+
+        "project_type":
+            project_type,
+
+        "state":
+            state,
+
+        "district":
+            district,
+
+        "land_area_hectares":
+            round(land_area, 2),
+
+        "affected_families":
+            families,
+
+        "legal_disputes":
+            legal_disputes,
+
+        "pending_approvals":
+            pending_approvals,
+
+        "approval_delay_days":
+            approval_delay_days,
+
+        "compensation_percentage":
+            round(compensation, 2),
+
+        "documentation_percentage":
+            round(documentation, 2),
+
+        "rehabilitation_percentage":
+            round(rehabilitation, 2),
+
+        "possession_percentage":
+            round(possession, 2),
+
+        "stakeholder_response_percentage":
+            round(stakeholder_response, 2),
+
+        "historical_performance_percentage":
+            round(historical_performance, 2),
+
+        "sia_to_preliminary_months":
+            round(sia_to_preliminary, 2),
+
+        "land_record_update_days":
+            land_record_days,
+
+        "objection_disposal_days":
+            objection_days,
+
+        "acquisition_cost_deposit_months":
+            round(deposit_months, 2),
+
+        "preliminary_to_declaration_months":
+            round(prelim_to_declaration, 2),
+
+        "award_duration_months":
+            round(award_months, 2),
+
+        "rr_implementation_months":
+            round(rr_months, 2),
+
+        "official_benchmark_breaches":
+            benchmark_breaches,
+
+        "current_stage":
+            current_stage,
+
+        "latitude":
+            round(latitude, 6),
+
+        "longitude":
+            round(longitude, 6),
+
+        "delay_days":
+            delay_days,
+
+        "delayed":
+            delayed
     })
+
+
+# ============================================================
+# CREATE DATAFRAME
+# ============================================================
 
 df = pd.DataFrame(rows)
 
-os.makedirs("data", exist_ok=True)
-out = "data/land_acquisition_training.csv"
-df.to_csv(out, index=False)
 
-print(f"Created: {out}")
-print(f"Rows: {len(df):,}")
-print(f"Columns: {len(df.columns)}")
-print("\nDelay distribution:")
-print(df["delayed"].value_counts(normalize=True).rename({0: "Not delayed", 1: "Delayed"}))
-print("\nRisk benchmark breaches:")
-print(df["official_benchmark_breaches"].value_counts().sort_index())
+# ============================================================
+# SAVE
+# ============================================================
+
+os.makedirs(
+    "data",
+    exist_ok=True
+)
+
+output_file = (
+    "data/land_acquisition_training.csv"
+)
+
+df.to_csv(
+    output_file,
+    index=False
+)
+
+
+# ============================================================
+# QUALITY REPORT
+# ============================================================
+
+print("=" * 65)
+print("LAND ACQUISITION DATASET GENERATED")
+print("=" * 65)
+
+print(
+    f"\nCreated: {output_file}"
+)
+
+print(
+    f"Rows: {len(df):,}"
+)
+
+print(
+    f"Columns: {len(df.columns)}"
+)
+
+
+print("\n" + "-" * 65)
+print("DELAY DISTRIBUTION")
+print("-" * 65)
+
+distribution = (
+    df["delayed"]
+    .value_counts(
+        normalize=True
+    )
+    .sort_index()
+)
+
+print(
+    f"Not delayed : "
+    f"{distribution.get(0, 0) * 100:.2f}%"
+)
+
+print(
+    f"Delayed     : "
+    f"{distribution.get(1, 0) * 100:.2f}%"
+)
+
+
+print("\n" + "-" * 65)
+print("DELAY DAYS")
+print("-" * 65)
+
+print(
+    df["delay_days"].describe()
+)
+
+
+print("\n" + "-" * 65)
+print("OFFICIAL BENCHMARK BREACHES")
+print("-" * 65)
+
+print(
+    df[
+        "official_benchmark_breaches"
+    ]
+    .value_counts()
+    .sort_index()
+)
+
+
+print("\n" + "-" * 65)
+print("PROJECT LIFECYCLE")
+print("-" * 65)
+
+print(
+    df[
+        "current_stage"
+    ]
+    .value_counts()
+)
+
+
+print("\n" + "-" * 65)
+print("SAMPLE PROJECTS")
+print("-" * 65)
+
+sample_columns = [
+    "project_id",
+    "state",
+    "district",
+    "project_type",
+    "land_area_hectares",
+    "affected_families",
+    "legal_disputes",
+    "pending_approvals",
+    "compensation_percentage",
+    "rehabilitation_percentage",
+    "possession_percentage",
+    "official_benchmark_breaches",
+    "delay_days",
+    "delayed"
+]
+
+print(
+    df[
+        sample_columns
+    ]
+    .head(5)
+    .to_string(index=False)
+)
+
+
+print("\n" + "=" * 65)
+print("DATASET READY FOR ML TRAINING")
+print("=" * 65)
