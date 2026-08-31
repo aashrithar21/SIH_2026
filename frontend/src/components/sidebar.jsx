@@ -1,10 +1,15 @@
 import { NavLink } from "react-router-dom";
 
 function Sidebar() {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  const isAdministrator =
+    user?.role === "Administrator";
+
   const menuItems = [
     {
       name: "Dashboard",
-      path: "/",
+      path: "/dashboard",
       icon: "▦",
     },
     {
@@ -39,23 +44,50 @@ function Sidebar() {
     },
   ];
 
+  // ----------------------------------------------------------
+  // ADMINISTRATOR ONLY
+  // ----------------------------------------------------------
+
+  if (isAdministrator) {
+    menuItems.push({
+      name: "Data Upload",
+      path: "/data-upload",
+      icon: "⇧",
+    });
+  }
+
   return (
     <aside className="sidebar">
 
-      {/* Logo */}
+      {/* =====================================================
+          LOGO
+      ====================================================== */}
+
       <div className="sidebar-brand">
-        <div className="brand-icon">AV</div>
+
+        <div className="brand-icon">
+          AV
+        </div>
 
         <div className="brand-text">
-          <div className="logo">AcquiVision</div>
+
+          <div className="logo">
+            AcquiVision
+          </div>
 
           <div className="brand-subtitle">
             Predictive vision for acquisition
           </div>
+
         </div>
+
       </div>
 
-      {/* Navigation */}
+
+      {/* =====================================================
+          NAVIGATION
+      ====================================================== */}
+
       <div className="sidebar-section-title">
         MAIN MENU
       </div>
@@ -63,13 +95,17 @@ function Sidebar() {
       <nav className="navigation">
 
         {menuItems.map((item) => (
+
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `nav-item ${isActive ? "active" : ""}`
+              `nav-item ${
+                isActive ? "active" : ""
+              }`
             }
           >
+
             <span className="nav-icon">
               {item.icon}
             </span>
@@ -83,12 +119,18 @@ function Sidebar() {
                 5
               </span>
             )}
+
           </NavLink>
+
         ))}
 
       </nav>
 
-      {/* Bottom Status */}
+
+      {/* =====================================================
+          BOTTOM STATUS
+      ====================================================== */}
+
       <div className="sidebar-bottom">
 
         <div className="system-status">
@@ -96,11 +138,52 @@ function Sidebar() {
           <span className="status-dot"></span>
 
           <div className="status-text">
-            <strong>System Online</strong>
-            <small>Monitoring active</small>
+
+            <strong>
+              System Online
+            </strong>
+
+            <small>
+              Monitoring active
+            </small>
+
           </div>
 
         </div>
+
+
+        {/* CURRENT USER */}
+
+        {user && (
+          <div
+            style={{
+              marginTop: "15px",
+              padding: "10px",
+              borderRadius: "8px",
+              background: "rgba(255,255,255,0.05)",
+            }}
+          >
+
+            <strong
+              style={{
+                display: "block",
+                fontSize: "13px",
+              }}
+            >
+              {user.username}
+            </strong>
+
+            <small
+              style={{
+                opacity: 0.7,
+              }}
+            >
+              {user.role}
+            </small>
+
+          </div>
+        )}
+
 
         <div className="sidebar-version">
           AcquiVision v1.0

@@ -7,122 +7,205 @@ function Navbar() {
 
   const navigate = useNavigate();
 
-  // =========================
-  // SAVED PROFILE SETTINGS
-  // =========================
+  // ==========================================================
+  // GET LOGGED-IN USER
+  // ==========================================================
 
-  const getSavedSettings = () => {
-    const savedSettings = localStorage.getItem("settings");
+  const getLoggedInUser = () => {
+    const savedUser = localStorage.getItem("user");
 
-    if (!savedSettings) {
+    if (!savedUser) {
       return {
-        name: "Administrator",
+        username: "Administrator",
         role: "Risk Manager",
       };
     }
 
     try {
-      return JSON.parse(savedSettings);
+      return JSON.parse(savedUser);
     } catch {
       return {
-        name: "Administrator",
+        username: "Administrator",
         role: "Risk Manager",
       };
     }
   };
 
+
+  // ==========================================================
+  // USER STATE
+  // ==========================================================
+
   const [userName, setUserName] = useState(() => {
-    const settings = getSavedSettings();
-    return settings.name || "Administrator";
+    const user = getLoggedInUser();
+
+    return user.username || "Administrator";
   });
+
 
   const [userRole, setUserRole] = useState(() => {
-    const settings = getSavedSettings();
-    return settings.role || "Risk Manager";
+    const user = getLoggedInUser();
+
+    return user.role || "Risk Manager";
   });
 
-  // =========================
-  // UPDATE PROFILE
-  // =========================
+
+  // ==========================================================
+  // UPDATE USER
+  // ==========================================================
 
   useEffect(() => {
-    const updateProfile = () => {
-      const settings = getSavedSettings();
 
-      setUserName(settings.name || "Administrator");
-      setUserRole(settings.role || "Risk Manager");
+    const updateUser = () => {
+
+      const user = getLoggedInUser();
+
+      setUserName(
+        user.username || "Administrator"
+      );
+
+      setUserRole(
+        user.role || "Risk Manager"
+      );
+
     };
 
-    window.addEventListener("settingsUpdated", updateProfile);
+
+    // Listen for storage changes
+    window.addEventListener(
+      "storage",
+      updateUser
+    );
+
+
+    // Custom event if login/settings updates user
+    window.addEventListener(
+      "userUpdated",
+      updateUser
+    );
+
 
     return () => {
-      window.removeEventListener("settingsUpdated", updateProfile);
+
+      window.removeEventListener(
+        "storage",
+        updateUser
+      );
+
+      window.removeEventListener(
+        "userUpdated",
+        updateUser
+      );
+
     };
+
   }, []);
 
-  // =========================
+
+  // ==========================================================
   // NOTIFICATIONS
-  // =========================
+  // ==========================================================
 
   const handleNotifications = () => {
-    setShowNotifications(!showNotifications);
+
+    setShowNotifications(
+      !showNotifications
+    );
+
     setShowProfile(false);
+
   };
 
-  // =========================
+
+  // ==========================================================
   // PROFILE
-  // =========================
+  // ==========================================================
 
   const handleProfile = () => {
-    setShowProfile(!showProfile);
+
+    setShowProfile(
+      !showProfile
+    );
+
     setShowNotifications(false);
+
   };
 
-  // =========================
+
+  // ==========================================================
   // VIEW ALL ALERTS
-  // =========================
+  // ==========================================================
 
   const handleViewAlerts = () => {
+
     setShowNotifications(false);
+
     navigate("/alerts");
+
   };
 
-  // =========================
+
+  // ==========================================================
   // ACCOUNT SETTINGS
-  // =========================
+  // ==========================================================
 
   const handleAccountSettings = () => {
+
     setShowProfile(false);
+
     navigate("/settings");
+
   };
 
-  // =========================
+
+  // ==========================================================
   // SYSTEM INFORMATION
-  // =========================
+  // ==========================================================
 
   const handleSystemInfo = () => {
+
     setShowProfile(false);
 
     alert(
-      "AcquiVision v1.0\n\nSystem Status: Online\nMonitoring: Active"
+      "AcquiVision v1.0\n\n" +
+      "System Status: Online\n" +
+      "Monitoring: Active"
     );
+
   };
 
-  // =========================
+
+  // ==========================================================
   // LOGOUT
-  // =========================
+  // ==========================================================
 
   const handleLogout = () => {
+
+    // Remove logged-in user
+    localStorage.removeItem("user");
+
+    // Remove old settings if present
+    localStorage.removeItem("settings");
+
     setShowProfile(false);
-    navigate("/");
+
+    navigate("/login");
+
   };
 
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
+
   return (
+
     <header className="navbar">
 
-      {/* =========================
+
+      {/* ======================================================
           LEFT SIDE
-      ========================= */}
+      ======================================================= */}
 
       <div className="navbar-left">
 
@@ -140,15 +223,17 @@ function Navbar() {
 
       </div>
 
-      {/* =========================
+
+      {/* ======================================================
           RIGHT SIDE
-      ========================= */}
+      ======================================================= */}
 
       <div className="navbar-right">
 
-        {/* =========================
+
+        {/* ====================================================
             SYSTEM STATUS
-        ========================= */}
+        ===================================================== */}
 
         <div className="navbar-status">
 
@@ -160,9 +245,10 @@ function Navbar() {
 
         </div>
 
-        {/* =========================
+
+        {/* ====================================================
             NOTIFICATIONS
-        ========================= */}
+        ===================================================== */}
 
         <div className="notification-wrapper">
 
@@ -182,13 +268,15 @@ function Navbar() {
 
           </button>
 
-          {/* =========================
+
+          {/* ==================================================
               NOTIFICATION PANEL
-          ========================= */}
+          =================================================== */}
 
           {showNotifications && (
 
             <div className="notification-panel">
+
 
               {/* HEADER */}
 
@@ -206,6 +294,7 @@ function Navbar() {
 
                 </div>
 
+
                 <button
                   className="notification-close"
                   onClick={() =>
@@ -218,13 +307,15 @@ function Navbar() {
 
               </div>
 
-              {/* =========================
+
+              {/* =================================================
                   NOTIFICATION LIST
-              ========================= */}
+              ================================================== */}
 
               <div className="notification-list">
 
-                {/* CRITICAL ALERT */}
+
+                {/* CRITICAL */}
 
                 <div className="notification-item critical">
 
@@ -248,7 +339,8 @@ function Navbar() {
 
                 </div>
 
-                {/* HIGH ALERT */}
+
+                {/* HIGH */}
 
                 <div className="notification-item high">
 
@@ -272,7 +364,8 @@ function Navbar() {
 
                 </div>
 
-                {/* HIGH ALERT */}
+
+                {/* HIGH */}
 
                 <div className="notification-item high">
 
@@ -296,7 +389,8 @@ function Navbar() {
 
                 </div>
 
-                {/* MEDIUM ALERT */}
+
+                {/* MEDIUM */}
 
                 <div className="notification-item medium">
 
@@ -320,7 +414,8 @@ function Navbar() {
 
                 </div>
 
-                {/* MEDIUM ALERT */}
+
+                {/* MEDIUM */}
 
                 <div className="notification-item medium">
 
@@ -346,9 +441,8 @@ function Navbar() {
 
               </div>
 
-              {/* =========================
-                  VIEW ALL ALERTS
-              ========================= */}
+
+              {/* VIEW ALL */}
 
               <button
                 className="view-all-notifications"
@@ -363,9 +457,10 @@ function Navbar() {
 
         </div>
 
-        {/* =========================
+
+        {/* ====================================================
             USER PROFILE
-        ========================= */}
+        ===================================================== */}
 
         <div className="profile-wrapper">
 
@@ -375,9 +470,18 @@ function Navbar() {
             aria-label="User profile"
           >
 
+            {/* AVATAR */}
+
             <div className="user-avatar">
-              {userName.charAt(0).toUpperCase()}
+
+              {userName
+                .charAt(0)
+                .toUpperCase()}
+
             </div>
+
+
+            {/* USER INFORMATION */}
 
             <div className="user-info">
 
@@ -391,6 +495,9 @@ function Navbar() {
 
             </div>
 
+
+            {/* ARROW */}
+
             <span
               className={`user-arrow ${
                 showProfile ? "open" : ""
@@ -401,21 +508,28 @@ function Navbar() {
 
           </button>
 
-          {/* =========================
+
+          {/* ==================================================
               PROFILE DROPDOWN
-          ========================= */}
+          =================================================== */}
 
           {showProfile && (
 
             <div className="profile-dropdown">
+
 
               {/* PROFILE HEADER */}
 
               <div className="profile-dropdown-header">
 
                 <div className="profile-large-avatar">
-                  {userName.charAt(0).toUpperCase()}
+
+                  {userName
+                    .charAt(0)
+                    .toUpperCase()}
+
                 </div>
+
 
                 <div>
 
@@ -431,11 +545,13 @@ function Navbar() {
 
               </div>
 
+
               <div className="profile-divider"></div>
 
-              {/* =========================
+
+              {/* =================================================
                   ACCOUNT SETTINGS
-              ========================= */}
+              ================================================== */}
 
               <button
                 className="profile-menu-item"
@@ -460,9 +576,10 @@ function Navbar() {
 
               </button>
 
-              {/* =========================
+
+              {/* =================================================
                   SYSTEM INFORMATION
-              ========================= */}
+              ================================================== */}
 
               <button
                 className="profile-menu-item"
@@ -487,11 +604,13 @@ function Navbar() {
 
               </button>
 
+
               <div className="profile-divider"></div>
 
-              {/* =========================
+
+              {/* =================================================
                   LOGOUT
-              ========================= */}
+              ================================================== */}
 
               <button
                 className="profile-menu-item logout"
@@ -509,7 +628,7 @@ function Navbar() {
                   </strong>
 
                   <small>
-                    Return to dashboard
+                    Return to login
                   </small>
 
                 </div>
@@ -525,6 +644,7 @@ function Navbar() {
       </div>
 
     </header>
+
   );
 }
 
