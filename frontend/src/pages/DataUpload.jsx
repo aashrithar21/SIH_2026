@@ -15,7 +15,7 @@ function DataUpload() {
   const [error, setError] = useState("");
 
   // ==========================================================
-  // CHECK ADMINISTRATOR
+  // CHECK LOGGED-IN USER
   // ==========================================================
 
   const userData = localStorage.getItem("user");
@@ -31,7 +31,7 @@ function DataUpload() {
   const isAdmin = user?.role === "Administrator";
 
   // ==========================================================
-  // BLOCK NON ADMIN USERS
+  // BLOCK NON-ADMIN USERS
   // ==========================================================
 
   if (!isAdmin) {
@@ -93,7 +93,7 @@ function DataUpload() {
   }
 
   // ==========================================================
-  // FILE SELECT
+  // FILE SELECTION
   // ==========================================================
 
   const handleFileChange = (event) => {
@@ -107,9 +107,14 @@ function DataUpload() {
       return;
     }
 
+    // Only CSV files
     if (!selectedFile.name.toLowerCase().endsWith(".csv")) {
       setFile(null);
+
+      event.target.value = "";
+
       setError("Only CSV files are allowed.");
+
       return;
     }
 
@@ -117,7 +122,7 @@ function DataUpload() {
   };
 
   // ==========================================================
-  // UPLOAD
+  // UPLOAD DATASET
   // ==========================================================
 
   const handleUpload = async () => {
@@ -134,39 +139,59 @@ function DataUpload() {
       const formData = new FormData();
 
       formData.append("file", file);
+
+      // Send logged-in role to backend
       formData.append("role", user.role);
 
+      // IMPORTANT:
+      // Backend endpoint is /upload-dataset
       const response = await fetch(
-        `${API_URL}/admin/upload-dataset`,
+        `${API_URL}/upload-dataset`,
         {
           method: "POST",
           body: formData,
         }
       );
 
+      // Try to read backend response
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.detail || "Dataset upload failed."
+          data.detail ||
+          data.message ||
+          "Dataset upload failed."
         );
       }
 
+      // Successful upload
       setMessage(
-        `Successfully uploaded ${data.inserted_records} project records.`
+        `Successfully uploaded ${
+          data.inserted_records ??
+          data.uploaded_records ??
+          data.records_added ??
+          0
+        } project records.`
       );
 
+      // Clear selected file
       setFile(null);
 
-      document.getElementById("dataset-file").value = "";
+      const input =
+        document.getElementById("dataset-file");
+
+      if (input) {
+        input.value = "";
+      }
 
     } catch (err) {
       console.error("Upload error:", err);
 
       setError(
         err.message ||
-        "Unable to upload dataset."
+        "Unable to upload dataset. Make sure the FastAPI backend is running."
       );
+
     } finally {
       setUploading(false);
     }
@@ -187,7 +212,9 @@ function DataUpload() {
 
         <section className="dashboard">
 
-          {/* HEADER */}
+          {/* ==================================================
+              PAGE HEADER
+          ================================================== */}
 
           <div className="page-title">
 
@@ -206,7 +233,10 @@ function DataUpload() {
 
           </div>
 
-          {/* UPLOAD SECTION */}
+
+          {/* ==================================================
+              UPLOAD SECTION
+          ================================================== */}
 
           <div className="dashboard-section">
 
@@ -232,7 +262,9 @@ function DataUpload() {
             </div>
 
 
-            {/* INFORMATION */}
+            {/* ==================================================
+                CSV REQUIREMENTS
+            ================================================== */}
 
             <div
               style={{
@@ -249,16 +281,23 @@ function DataUpload() {
                 CSV Upload Requirements
               </strong>
 
-              <p style={{ marginBottom: 0 }}>
-                The uploaded file must follow the same
-                column structure as the existing training
-                dataset.
+              <p
+                style={{
+                  marginBottom: 0,
+                  marginTop: "8px",
+                }}
+              >
+                Upload a CSV file containing land acquisition
+                project records. The CSV should follow the
+                same column structure as the existing dataset.
               </p>
 
             </div>
 
 
-            {/* FILE INPUT */}
+            {/* ==================================================
+                FILE INPUT
+            ================================================== */}
 
             <div
               style={{
@@ -304,7 +343,9 @@ function DataUpload() {
             </div>
 
 
-            {/* SELECTED FILE */}
+            {/* ==================================================
+                SELECTED FILE
+            ================================================== */}
 
             {file && (
 
@@ -322,7 +363,12 @@ function DataUpload() {
                   Selected File
                 </strong>
 
-                <p style={{ marginBottom: 0 }}>
+                <p
+                  style={{
+                    marginBottom: "5px",
+                    marginTop: "8px",
+                  }}
+                >
                   {file.name}
                 </p>
 
@@ -335,7 +381,9 @@ function DataUpload() {
             )}
 
 
-            {/* ERROR */}
+            {/* ==================================================
+                ERROR
+            ================================================== */}
 
             {error && (
 
@@ -349,13 +397,28 @@ function DataUpload() {
                   border: "1px solid #fecaca",
                 }}
               >
-                {error}
+
+                <strong>
+                  Upload Error
+                </strong>
+
+                <p
+                  style={{
+                    marginBottom: 0,
+                    marginTop: "5px",
+                  }}
+                >
+                  {error}
+                </p>
+
               </div>
 
             )}
 
 
-            {/* SUCCESS */}
+            {/* ==================================================
+                SUCCESS
+            ================================================== */}
 
             {message && (
 
@@ -369,13 +432,27 @@ function DataUpload() {
                   border: "1px solid #bbf7d0",
                 }}
               >
+
                 ✓ {message}
+
+                <p
+                  style={{
+                    marginBottom: 0,
+                    marginTop: "8px",
+                  }}
+                >
+                  The uploaded project data can now be
+                  viewed in the Projects section.
+                </p>
+
               </div>
 
             )}
 
 
-            {/* UPLOAD BUTTON */}
+            {/* ==================================================
+                UPLOAD BUTTON
+            ================================================== */}
 
             <button
               onClick={handleUpload}
@@ -397,15 +474,19 @@ function DataUpload() {
                     : "pointer",
               }}
             >
+
               {uploading
                 ? "Uploading Dataset..."
                 : "Upload Dataset"}
+
             </button>
 
           </div>
 
 
-          {/* WORKFLOW */}
+          {/* ==================================================
+              DATA PROCESSING WORKFLOW
+          ================================================== */}
 
           <div className="dashboard-section">
 
@@ -423,24 +504,27 @@ function DataUpload() {
               <div className="model-step">
 
                 <div className="model-step-number">
-                  1. <strong>
-                  CSV Upload
-                </strong>
+                  1.{" "}
+                  <strong>
+                    CSV Upload
+                  </strong>
                 </div>
 
-            <span>
+                <span>
                   Administrator uploads project data
                 </span>
 
               </div>
-               <br></br>
+
+              <br />
 
               <div className="model-step">
 
                 <div className="model-step-number">
-                  2 . <strong>
-                  Validation
-                </strong>
+                  2.{" "}
+                  <strong>
+                    Validation
+                  </strong>
                 </div>
 
                 <span>
@@ -448,15 +532,16 @@ function DataUpload() {
                 </span>
 
               </div>
-               <br></br>
 
+              <br />
 
               <div className="model-step">
 
                 <div className="model-step-number">
-                  3 . <strong>
-                  AI Prediction
-                </strong>
+                  3.{" "}
+                  <strong>
+                    AI Prediction
+                  </strong>
                 </div>
 
                 <span>
@@ -464,14 +549,16 @@ function DataUpload() {
                 </span>
 
               </div>
-                 <br></br>
+
+              <br />
 
               <div className="model-step">
 
                 <div className="model-step-number">
-                  4 . <strong>
-                  Dashboard
-                </strong>
+                  4.{" "}
+                  <strong>
+                    Dashboard
+                  </strong>
                 </div>
 
                 <span>
