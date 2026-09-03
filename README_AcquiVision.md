@@ -1103,4 +1103,4 @@ Use this sequence:
 
 This repository is an SIH 2026 hackathon prototype. The included training data is synthetic and should not be represented as official government project data.
 
-For production use, replace the prototype data with properly authorized, validated and documented project data.
+
